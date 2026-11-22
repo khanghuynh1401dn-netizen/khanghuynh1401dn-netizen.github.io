@@ -2085,7 +2085,7 @@
         }, { passive: true });
 
         // ==========================================
-        // 4. AMBIENT SPIRIT QI PARTICLE CANVAS (PC VORTEX & PE LIGHTWEIGHT)
+        // 4. AMBIENT SPIRIT QI PARTICLE CANVAS (3-ARM VORTEX FOR PC & LIGHTWEIGHT FOR PE)
         // ==========================================
         (function initSpiritQiCanvas() {
             const canvas = document.getElementById('qi-canvas');
@@ -2093,28 +2093,54 @@
             const ctx = canvas.getContext('2d');
             let width = 0;
             let height = 0;
-            let particles = [];
             let animationFrameId = null;
-
-            const colors = [
-                'rgba(251, 191, 36, 0.55)',  // Gold Spirit Qi
-                'rgba(129, 140, 248, 0.5)',  // Nebula Indigo
-                'rgba(6, 182, 212, 0.45)',   // Cyan Essence
-                'rgba(16, 185, 129, 0.4)'    // Jade Aura
-            ];
 
             // Nhận diện di động PE: Màn hình hẹp hoặc thiết bị cảm ứng ngón tay (touch coarse)
             const isMobile = () => window.innerWidth <= 768 || window.matchMedia('(pointer: coarse)').matches;
 
-            // Tọa độ và trạng thái hấp thu linh khí của con trỏ chuột (CHỈ DÀNH CHO PC)
+            // Tọa độ con trỏ và trọng tâm xoáy nước 3 tia (CHỈ DÀNH CHO PC)
             const mouse = {
                 x: -1000,
                 y: -1000,
-                active: false,
-                pulse: 0
+                active: false
             };
+            const vortexCenter = {
+                x: -1000,
+                y: -1000
+            };
+            let vortexAngle = 0;
+            let vortexIntensity = 0; // Chuyển đổi mượt mà giữa trạng thái lơ lửng và xoáy nước 3 tia
 
-            // Lắng nghe di chuột chỉ trên PC (trên PE hoàn toàn không kích hoạt)
+            // Màu sắc đại diện cho 3 tia xoáy linh khí: Kim Sắc, Thiên Lam, Huyền Tử
+            const armStyles = [
+                {
+                    color: 'rgba(251, 191, 36, 0.9)',    // Tia Kim Sắc (Gold Qi)
+                    glow: 'rgba(251, 191, 36, 0.4)',
+                    trail: 'rgba(251, 191, 36, 0.22)'
+                },
+                {
+                    color: 'rgba(6, 182, 212, 0.9)',     // Tia Thiên Lam (Cyan Water)
+                    glow: 'rgba(6, 182, 212, 0.4)',
+                    trail: 'rgba(6, 182, 212, 0.22)'
+                },
+                {
+                    color: 'rgba(129, 140, 248, 0.9)',   // Tia Huyền Tử (Nebula Indigo)
+                    glow: 'rgba(129, 140, 248, 0.4)',
+                    trail: 'rgba(129, 140, 248, 0.22)'
+                }
+            ];
+
+            // Màu hạt linh khí lơ lửng thông thường (PE & nền)
+            const ambientColors = [
+                'rgba(251, 191, 36, 0.45)',
+                'rgba(129, 140, 248, 0.4)',
+                'rgba(6, 182, 212, 0.35)',
+                'rgba(16, 185, 129, 0.3)'
+            ];
+
+            let particles = [];
+
+            // Lắng nghe di chuột CHỈ TRÊN PC (trên PE hoàn toàn không kích hoạt)
             if (!isMobile()) {
                 window.addEventListener('mousemove', (e) => {
                     if (isMobile()) {
@@ -2123,6 +2149,10 @@
                     }
                     mouse.x = e.clientX;
                     mouse.y = e.clientY;
+                    if (!mouse.active) {
+                        vortexCenter.x = mouse.x;
+                        vortexCenter.y = mouse.y;
+                    }
                     mouse.active = true;
                 }, { passive: true });
 
@@ -2142,53 +2172,65 @@
                 canvas.style.height = height + 'px';
 
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                createParticles();
+                initParticles();
             }
 
-            function createSingleParticle(fromEdge = false) {
+            function initParticles() {
+                particles = [];
                 const mobile = isMobile();
-                let x, y;
-                if (fromEdge) {
-                    // Tái sinh hạt linh khí mới từ viền ngoài màn hình
-                    if (Math.random() < 0.6) {
-                        x = Math.random() * width;
-                        y = height + 10;
-                    } else if (Math.random() < 0.5) {
-                        x = -10;
-                        y = Math.random() * height;
-                    } else {
-                        x = width + 10;
-                        y = Math.random() * height;
+                const maxR = 230;
+
+                if (mobile) {
+                    // Trên PE: Chỉ có 18 hạt lơ lửng nhẹ nhàng, siêu tiết kiệm pin
+                    for (let i = 0; i < 18; i++) {
+                        particles.push({
+                            x: Math.random() * width,
+                            y: Math.random() * height,
+                            vx: (Math.random() - 0.5) * 0.28,
+                            vy: -Math.random() * 0.38 - 0.1,
+                            radius: Math.random() * 2.0 + 0.6,
+                            color: ambientColors[Math.floor(Math.random() * ambientColors.length)],
+                            phase: Math.random() * Math.PI * 2,
+                            pulseSpeed: Math.random() * 0.02 + 0.005
+                        });
                     }
                 } else {
-                    x = Math.random() * width;
-                    y = Math.random() * height;
-                }
+                    // Trên PC: 54 hạt phân bố đều trên 3 tia xoáy nước (18 hạt mỗi tia) + 16 hạt nền
+                    for (let i = 0; i < 54; i++) {
+                        const arm = i % 3;
+                        const tier = Math.floor(i / 3);
+                        const r = 14 + (tier / 18) * (maxR - 14);
+                        particles.push({
+                            isVortexArm: true,
+                            arm: arm,
+                            r: r,
+                            offsetAngle: (Math.random() - 0.5) * 0.16,
+                            x: Math.random() * width,
+                            y: Math.random() * height,
+                            ambientX: Math.random() * width,
+                            ambientY: Math.random() * height,
+                            ambientVx: (Math.random() - 0.5) * 0.28,
+                            ambientVy: -Math.random() * 0.38 - 0.1,
+                            radius: Math.random() * 1.8 + 1.2,
+                            phase: Math.random() * Math.PI * 2,
+                            pulseSpeed: Math.random() * 0.03 + 0.01
+                        });
+                    }
 
-                const baseVx = (Math.random() - 0.5) * 0.28;
-                const baseVy = -Math.random() * 0.38 - 0.12;
-
-                return {
-                    x,
-                    y,
-                    baseVx,
-                    baseVy,
-                    vx: baseVx,
-                    vy: baseVy,
-                    radius: Math.random() * (mobile ? 2.0 : 2.5) + 0.6,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    alpha: Math.random() * 0.6 + 0.2,
-                    pulseSpeed: Math.random() * 0.025 + 0.008,
-                    phase: Math.random() * Math.PI * 2
-                };
-            }
-
-            function createParticles() {
-                // Tối ưu số lượng: 18 hạt trên PE (tiết kiệm pin & mượt), 60 hạt trên PC (đủ tạo luồng xoáy hấp thu ấn tượng)
-                const count = isMobile() ? 18 : 60;
-                particles = [];
-                for (let i = 0; i < count; i++) {
-                    particles.push(createSingleParticle(false));
+                    // 16 hạt linh khí tự do bay bổng nền PC
+                    for (let i = 0; i < 16; i++) {
+                        particles.push({
+                            isVortexArm: false,
+                            x: Math.random() * width,
+                            y: Math.random() * height,
+                            vx: (Math.random() - 0.5) * 0.25,
+                            vy: -Math.random() * 0.35 - 0.1,
+                            radius: Math.random() * 2.2 + 0.6,
+                            color: ambientColors[Math.floor(Math.random() * ambientColors.length)],
+                            phase: Math.random() * Math.PI * 2,
+                            pulseSpeed: Math.random() * 0.02 + 0.005
+                        });
+                    }
                 }
             }
 
@@ -2196,81 +2238,135 @@
                 ctx.clearRect(0, 0, width, height);
 
                 const mobile = isMobile();
-                const vortexRadius = 240; // Bán kính vòng xoáy hút linh khí quanh chuột
+                const maxR = 230;
 
-                if (!mobile && mouse.active) {
-                    mouse.pulse *= 0.93;
+                if (!mobile) {
+                    // Cập nhật góc quay xoáy nước và theo dõi con trỏ chuột
+                    vortexAngle += 0.048; // Tốc độ xoáy cuộn hút vào tâm
+                    if (mouse.active) {
+                        vortexIntensity = Math.min(vortexIntensity + 0.06, 1.0);
+                        // Trọng tâm xoáy lướt theo chuột mượt mà (có độ trễ tự nhiên như xoáy nước)
+                        vortexCenter.x += (mouse.x - vortexCenter.x) * 0.16;
+                        vortexCenter.y += (mouse.y - vortexCenter.y) * 0.16;
+                    } else {
+                        vortexIntensity = Math.max(vortexIntensity - 0.03, 0.0);
+                    }
                 }
 
-                for (let i = 0; i < particles.length; i++) {
-                    let p = particles[i];
-                    p.phase += p.pulseSpeed;
+                // Vẽ 3 dải tia xoáy nước kết nối trên PC khi chuột hoạt động
+                if (!mobile && vortexIntensity > 0.05) {
+                    for (let arm = 0; arm < 3; arm++) {
+                        const style = armStyles[arm];
+                        const armParticles = particles
+                            .filter(p => p.isVortexArm && p.arm === arm)
+                            .sort((a, b) => b.r - a.r);
 
-                    // HIỆU ỨNG HÚT XOÁY HẤP THU LINH KHÍ (CHỈ TRÊN PC KHI DI CHUỘT)
-                    if (!mobile && mouse.active) {
-                        const dx = mouse.x - p.x;
-                        const dy = mouse.y - p.y;
-                        const dist = Math.hypot(dx, dy);
-
-                        if (dist < 18) {
-                            // Hạt đã được hấp thu hoàn toàn vào tâm chuột: kích hoạt xung sáng và tái sinh hạt mới
-                            mouse.pulse = Math.min(mouse.pulse + 0.12, 1.0);
-                            particles[i] = createSingleParticle(true);
-                            continue;
+                        if (armParticles.length > 2) {
+                            ctx.beginPath();
+                            ctx.moveTo(armParticles[0].x, armParticles[0].y);
+                            for (let i = 1; i < armParticles.length; i++) {
+                                ctx.lineTo(armParticles[i].x, armParticles[i].y);
+                            }
+                            // Nối tia xoắn ốc vào thẳng tâm xoáy nước
+                            ctx.lineTo(vortexCenter.x, vortexCenter.y);
+                            ctx.strokeStyle = style.trail;
+                            ctx.lineWidth = 1.6 * vortexIntensity;
+                            ctx.stroke();
                         }
-
-                        if (dist < vortexRadius) {
-                            const force = 1 - (dist / vortexRadius);
-                            // Lực hút hướng tâm tăng dần khi tiến gần chuột
-                            const pull = (1.4 + force * 2.2) * force;
-                            // Lực xoáy tiếp tuyến tạo dòng xoáy ốc bao quanh chuột
-                            const spin = (0.9 + force * 0.6) * force;
-
-                            p.vx += (dx / dist) * pull + (-dy / dist) * spin;
-                            p.vy += (dy / dist) * pull + (dx / dist) * spin;
-
-                            // Ma sát hãm để quỹ đạo xoắn ốc mượt mà không văng
-                            p.vx *= 0.88;
-                            p.vy *= 0.88;
-                        } else {
-                            // Khi ra ngoài bán kính xoáy, từ từ hồi phục vận tốc bay lơ lửng ban đầu
-                            p.vx += (p.baseVx - p.vx) * 0.04;
-                            p.vy += (p.baseVy - p.vy) * 0.04;
-                        }
-                    } else {
-                        // Trên PE hoặc khi không di chuột: bay bổng nhẹ nhàng tự nhiên
-                        p.vx += (p.baseVx - p.vx) * 0.04;
-                        p.vy += (p.baseVy - p.vy) * 0.04;
                     }
 
-                    p.x += p.vx;
-                    p.y += p.vy;
-
-                    // Tái tạo vị trí khi hạt bay ra khỏi màn hình
-                    if (p.y < -15) {
-                        p.y = height + 15;
-                        p.x = Math.random() * width;
-                    }
-                    if (p.x < -15) p.x = width + 15;
-                    if (p.x > width + 15) p.x = -15;
-
-                    // Vẽ hạt phát quang
-                    const glowRadius = p.radius * (2.4 + Math.sin(p.phase) * 0.7);
-                    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius * 2.2);
-                    gradient.addColorStop(0, p.color);
-                    gradient.addColorStop(1, 'rgba(7, 10, 19, 0)');
-
+                    // Tâm điểm xoáy nước tinh tế nhỏ gọn tại đầu chuột
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, glowRadius * 2.2, 0, Math.PI * 2);
-                    ctx.fillStyle = gradient;
-                    ctx.fill();
-
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.arc(vortexCenter.x, vortexCenter.y, 3.5 * vortexIntensity, 0, Math.PI * 2);
                     ctx.fillStyle = '#ffffff';
-                    ctx.globalAlpha = 0.35 + Math.sin(p.phase) * 0.2;
+                    ctx.globalAlpha = 0.7 * vortexIntensity;
                     ctx.fill();
                     ctx.globalAlpha = 1;
+                }
+
+                // Cập nhật và vẽ từng hạt linh khí
+                for (let i = 0; i < particles.length; i++) {
+                    const p = particles[i];
+                    p.phase += p.pulseSpeed;
+
+                    if (!mobile && p.isVortexArm) {
+                        // 1. Quỹ đạo hạt lơ lửng nền (khi chưa kích hoạt chuột)
+                        p.ambientX += p.ambientVx;
+                        p.ambientY += p.ambientVy;
+                        if (p.ambientY < -15) { p.ambientY = height + 15; p.ambientX = Math.random() * width; }
+                        if (p.ambientX < -15) p.ambientX = width + 15;
+                        if (p.ambientX > width + 15) p.ambientX = -15;
+
+                        // 2. Quỹ đạo xoáy nước 3 tia hút vào tâm (r giảm dần liên tục)
+                        // Tốc độ hút càng vào gần tâm càng gia tốc mạnh
+                        const speed = 2.2 + Math.pow(1 - p.r / maxR, 2) * 4.6;
+                        p.r -= speed;
+
+                        // Khi hạt chạm đáy tâm xoáy (< 8px), nó được hấp thu và tái sinh ở đầu ngoài của 1 trong 3 tia
+                        if (p.r < 8) {
+                            p.r = maxR + Math.random() * 20;
+                            p.arm = (p.arm + 1) % 3; // Luân chuyển qua tia tiếp theo tạo dòng chảy đều đặn
+                        }
+
+                        // Công thức góc xoắn ốc 3 tia: 3 tia cách nhau đúng 120 độ (2*PI/3)
+                        const armAngleOffset = p.arm * (Math.PI * 2 / 3);
+                        // Đường cong xoáy nước tự nhiên (Logarithmic / Power curve)
+                        const curveAngle = Math.pow(p.r / maxR, 0.72) * 3.4;
+                        const theta = vortexAngle + armAngleOffset + curveAngle + p.offsetAngle;
+
+                        const vortexX = vortexCenter.x + p.r * Math.cos(theta);
+                        const vortexY = vortexCenter.y + p.r * Math.sin(theta);
+
+                        // Hòa trộn mượt mà giữa vị trí lơ lửng và vị trí xoáy nước
+                        p.x = p.ambientX * (1 - vortexIntensity) + vortexX * vortexIntensity;
+                        p.y = p.ambientY * (1 - vortexIntensity) + vortexY * vortexIntensity;
+
+                        // Lựa chọn màu sắc theo nhánh tia xoáy
+                        const armStyle = armStyles[p.arm];
+                        const glowRadius = p.radius * (2.2 + Math.sin(p.phase) * 0.6);
+
+                        // Vẽ hào quang hạt
+                        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius * 2.2);
+                        gradient.addColorStop(0, armStyle.glow);
+                        gradient.addColorStop(1, 'rgba(7, 10, 19, 0)');
+
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, glowRadius * 2.2, 0, Math.PI * 2);
+                        ctx.fillStyle = gradient;
+                        ctx.fill();
+
+                        // Lõi sáng hạt linh khí
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = armStyle.color;
+                        ctx.fill();
+
+                    } else {
+                        // Dành cho hạt nền tự do trên PC hoặc 18 hạt thuần túy trên PE
+                        p.x += p.vx;
+                        p.y += p.vy;
+
+                        if (p.y < -15) { p.y = height + 15; p.x = Math.random() * width; }
+                        if (p.x < -15) p.x = width + 15;
+                        if (p.x > width + 15) p.x = -15;
+
+                        const glowRadius = p.radius * (2.4 + Math.sin(p.phase) * 0.7);
+                        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius * 2.2);
+                        gradient.addColorStop(0, p.color);
+                        gradient.addColorStop(1, 'rgba(7, 10, 19, 0)');
+
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, glowRadius * 2.2, 0, Math.PI * 2);
+                        ctx.fillStyle = gradient;
+                        ctx.fill();
+
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.globalAlpha = 0.35 + Math.sin(p.phase) * 0.2;
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                    }
                 }
 
                 animationFrameId = requestAnimationFrame(animate);
