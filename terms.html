@@ -2198,28 +2198,8 @@
                 const mobile = isMobile();
                 const vortexRadius = 240; // Bán kính vòng xoáy hút linh khí quanh chuột
 
-                // Vẽ vòng sáng hấp thu linh khí xung quanh con trỏ chuột trên PC
                 if (!mobile && mouse.active) {
-                    const coreRadius = 14 + mouse.pulse * 18;
-                    const auraGrad = ctx.createRadialGradient(mouse.x, mouse.y, 2, mouse.x, mouse.y, coreRadius * 2);
-                    auraGrad.addColorStop(0, 'rgba(251, 191, 36, 0.45)');
-                    auraGrad.addColorStop(0.4, 'rgba(99, 102, 241, 0.25)');
-                    auraGrad.addColorStop(1, 'rgba(7, 10, 19, 0)');
-
-                    ctx.beginPath();
-                    ctx.arc(mouse.x, mouse.y, coreRadius * 2, 0, Math.PI * 2);
-                    ctx.fillStyle = auraGrad;
-                    ctx.fill();
-
-                    // Vòng xoáy linh khí nhỏ ở tâm
-                    ctx.beginPath();
-                    ctx.arc(mouse.x, mouse.y, 4 + mouse.pulse * 3, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ffffff';
-                    ctx.globalAlpha = 0.6 + mouse.pulse * 0.4;
-                    ctx.fill();
-                    ctx.globalAlpha = 1;
-
-                    mouse.pulse *= 0.93; // Giảm dần hiệu ứng rung xung kích
+                    mouse.pulse *= 0.93;
                 }
 
                 for (let i = 0; i < particles.length; i++) {
