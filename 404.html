@@ -2085,7 +2085,7 @@
         }, { passive: true });
 
         // ==========================================
-        // 4. AMBIENT SPIRIT QI PARTICLE CANVAS (PC & PE OPTIMIZED)
+        // 4. AMBIENT SPIRIT QI PARTICLE CANVAS (PC VORTEX & PE LIGHTWEIGHT)
         // ==========================================
         (function initSpiritQiCanvas() {
             const canvas = document.getElementById('qi-canvas');
@@ -2097,13 +2097,39 @@
             let animationFrameId = null;
 
             const colors = [
-                'rgba(251, 191, 36, 0.45)',  // Gold Spirit Qi
-                'rgba(129, 140, 248, 0.4)',  // Nebula Indigo
-                'rgba(6, 182, 212, 0.35)',   // Cyan Essence
-                'rgba(16, 185, 129, 0.3)'    // Jade Aura
+                'rgba(251, 191, 36, 0.55)',  // Gold Spirit Qi
+                'rgba(129, 140, 248, 0.5)',  // Nebula Indigo
+                'rgba(6, 182, 212, 0.45)',   // Cyan Essence
+                'rgba(16, 185, 129, 0.4)'    // Jade Aura
             ];
 
-            const isMobile = () => window.innerWidth <= 768;
+            // Nhận diện di động PE: Màn hình hẹp hoặc thiết bị cảm ứng ngón tay (touch coarse)
+            const isMobile = () => window.innerWidth <= 768 || window.matchMedia('(pointer: coarse)').matches;
+
+            // Tọa độ và trạng thái hấp thu linh khí của con trỏ chuột (CHỈ DÀNH CHO PC)
+            const mouse = {
+                x: -1000,
+                y: -1000,
+                active: false,
+                pulse: 0
+            };
+
+            // Lắng nghe di chuột chỉ trên PC (trên PE hoàn toàn không kích hoạt)
+            if (!isMobile()) {
+                window.addEventListener('mousemove', (e) => {
+                    if (isMobile()) {
+                        mouse.active = false;
+                        return;
+                    }
+                    mouse.x = e.clientX;
+                    mouse.y = e.clientY;
+                    mouse.active = true;
+                }, { passive: true });
+
+                window.addEventListener('mouseleave', () => {
+                    mouse.active = false;
+                });
+            }
 
             function resize() {
                 const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -2119,41 +2145,136 @@
                 createParticles();
             }
 
+            function createSingleParticle(fromEdge = false) {
+                const mobile = isMobile();
+                let x, y;
+                if (fromEdge) {
+                    // Tái sinh hạt linh khí mới từ viền ngoài màn hình
+                    if (Math.random() < 0.6) {
+                        x = Math.random() * width;
+                        y = height + 10;
+                    } else if (Math.random() < 0.5) {
+                        x = -10;
+                        y = Math.random() * height;
+                    } else {
+                        x = width + 10;
+                        y = Math.random() * height;
+                    }
+                } else {
+                    x = Math.random() * width;
+                    y = Math.random() * height;
+                }
+
+                const baseVx = (Math.random() - 0.5) * 0.28;
+                const baseVy = -Math.random() * 0.38 - 0.12;
+
+                return {
+                    x,
+                    y,
+                    baseVx,
+                    baseVy,
+                    vx: baseVx,
+                    vy: baseVy,
+                    radius: Math.random() * (mobile ? 2.0 : 2.5) + 0.6,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    alpha: Math.random() * 0.6 + 0.2,
+                    pulseSpeed: Math.random() * 0.025 + 0.008,
+                    phase: Math.random() * Math.PI * 2
+                };
+            }
+
             function createParticles() {
-                // Tự động tối ưu số lượng hạt: 18 hạt trên mobile (tiết kiệm pin & mượt), 45 hạt trên PC
-                const count = isMobile() ? 18 : 45;
+                // Tối ưu số lượng: 18 hạt trên PE (tiết kiệm pin & mượt), 60 hạt trên PC (đủ tạo luồng xoáy hấp thu ấn tượng)
+                const count = isMobile() ? 18 : 60;
                 particles = [];
                 for (let i = 0; i < count; i++) {
-                    particles.push({
-                        x: Math.random() * width,
-                        y: Math.random() * height,
-                        radius: Math.random() * (isMobile() ? 2.0 : 2.5) + 0.6,
-                        vx: (Math.random() - 0.5) * 0.28,
-                        vy: -Math.random() * 0.38 - 0.1,
-                        color: colors[Math.floor(Math.random() * colors.length)],
-                        alpha: Math.random() * 0.6 + 0.2,
-                        pulseSpeed: Math.random() * 0.02 + 0.005,
-                        phase: Math.random() * Math.PI * 2
-                    });
+                    particles.push(createSingleParticle(false));
                 }
             }
 
             function animate() {
                 ctx.clearRect(0, 0, width, height);
 
+                const mobile = isMobile();
+                const vortexRadius = 240; // Bán kính vòng xoáy hút linh khí quanh chuột
+
+                // Vẽ vòng sáng hấp thu linh khí xung quanh con trỏ chuột trên PC
+                if (!mobile && mouse.active) {
+                    const coreRadius = 14 + mouse.pulse * 18;
+                    const auraGrad = ctx.createRadialGradient(mouse.x, mouse.y, 2, mouse.x, mouse.y, coreRadius * 2);
+                    auraGrad.addColorStop(0, 'rgba(251, 191, 36, 0.45)');
+                    auraGrad.addColorStop(0.4, 'rgba(99, 102, 241, 0.25)');
+                    auraGrad.addColorStop(1, 'rgba(7, 10, 19, 0)');
+
+                    ctx.beginPath();
+                    ctx.arc(mouse.x, mouse.y, coreRadius * 2, 0, Math.PI * 2);
+                    ctx.fillStyle = auraGrad;
+                    ctx.fill();
+
+                    // Vòng xoáy linh khí nhỏ ở tâm
+                    ctx.beginPath();
+                    ctx.arc(mouse.x, mouse.y, 4 + mouse.pulse * 3, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.globalAlpha = 0.6 + mouse.pulse * 0.4;
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+
+                    mouse.pulse *= 0.93; // Giảm dần hiệu ứng rung xung kích
+                }
+
                 for (let i = 0; i < particles.length; i++) {
-                    const p = particles[i];
-                    p.x += p.vx;
-                    p.y += p.vy;
+                    let p = particles[i];
                     p.phase += p.pulseSpeed;
 
-                    if (p.y < -10) {
-                        p.y = height + 10;
+                    // HIỆU ỨNG HÚT XOÁY HẤP THU LINH KHÍ (CHỈ TRÊN PC KHI DI CHUỘT)
+                    if (!mobile && mouse.active) {
+                        const dx = mouse.x - p.x;
+                        const dy = mouse.y - p.y;
+                        const dist = Math.hypot(dx, dy);
+
+                        if (dist < 18) {
+                            // Hạt đã được hấp thu hoàn toàn vào tâm chuột: kích hoạt xung sáng và tái sinh hạt mới
+                            mouse.pulse = Math.min(mouse.pulse + 0.12, 1.0);
+                            particles[i] = createSingleParticle(true);
+                            continue;
+                        }
+
+                        if (dist < vortexRadius) {
+                            const force = 1 - (dist / vortexRadius);
+                            // Lực hút hướng tâm tăng dần khi tiến gần chuột
+                            const pull = (1.4 + force * 2.2) * force;
+                            // Lực xoáy tiếp tuyến tạo dòng xoáy ốc bao quanh chuột
+                            const spin = (0.9 + force * 0.6) * force;
+
+                            p.vx += (dx / dist) * pull + (-dy / dist) * spin;
+                            p.vy += (dy / dist) * pull + (dx / dist) * spin;
+
+                            // Ma sát hãm để quỹ đạo xoắn ốc mượt mà không văng
+                            p.vx *= 0.88;
+                            p.vy *= 0.88;
+                        } else {
+                            // Khi ra ngoài bán kính xoáy, từ từ hồi phục vận tốc bay lơ lửng ban đầu
+                            p.vx += (p.baseVx - p.vx) * 0.04;
+                            p.vy += (p.baseVy - p.vy) * 0.04;
+                        }
+                    } else {
+                        // Trên PE hoặc khi không di chuột: bay bổng nhẹ nhàng tự nhiên
+                        p.vx += (p.baseVx - p.vx) * 0.04;
+                        p.vy += (p.baseVy - p.vy) * 0.04;
+                    }
+
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    // Tái tạo vị trí khi hạt bay ra khỏi màn hình
+                    if (p.y < -15) {
+                        p.y = height + 15;
                         p.x = Math.random() * width;
                     }
-                    if (p.x < -10) p.x = width + 10;
-                    if (p.x > width + 10) p.x = -10;
+                    if (p.x < -15) p.x = width + 15;
+                    if (p.x > width + 15) p.x = -15;
 
+                    // Vẽ hạt phát quang
                     const glowRadius = p.radius * (2.4 + Math.sin(p.phase) * 0.7);
                     const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius * 2.2);
                     gradient.addColorStop(0, p.color);
