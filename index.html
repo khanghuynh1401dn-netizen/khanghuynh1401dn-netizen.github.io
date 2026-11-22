@@ -54,10 +54,13 @@
 
         html {
             scroll-behavior: smooth;
+            scroll-padding-top: 85px;
             background-color: var(--bg-void);
             color: var(--text-main);
             font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
             line-height: 1.65;
+            overflow-x: hidden;
+            -webkit-text-size-adjust: 100%;
         }
 
         body {
@@ -68,7 +71,9 @@
                 radial-gradient(circle at 50% 90%, rgba(6, 182, 212, 0.09) 0%, transparent 50%),
                 var(--bg-void);
             overflow-x: hidden;
+            width: 100%;
             position: relative;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* Ambient Spirit Qi Canvas */
@@ -966,20 +971,315 @@
             color: #070a13;
         }
 
-        /* Responsive */
+        /* ==========================================
+           DESKTOP ENHANCEMENTS (PC)
+           ========================================== */
+        @media (hover: hover) and (pointer: fine) {
+            .glass-card, .meta-chip, .quick-tag, .tab-trigger, .step-pill, .faq-item, .daemon-item {
+                transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), 
+                            box-shadow 0.25s ease, 
+                            border-color 0.25s ease;
+            }
+
+            .glass-card:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(99, 102, 241, 0.2);
+            }
+        }
+
+        @media (min-width: 1440px) {
+            .container {
+                max-width: 1220px;
+            }
+        }
+
+        /* ==========================================
+           MOBILE & TABLET RESPONSIVE (PE <= 768px)
+           ========================================== */
         @media (max-width: 768px) {
+            html {
+                scroll-padding-top: 74px;
+            }
+
+            .container {
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+                width: 100%;
+            }
+
+            /* Navbar */
             .nav-links {
                 display: none;
             }
-            .grid-2 {
-                grid-template-columns: 1fr;
+
+            .nav-inner {
+                height: 64px;
+                gap: 10px;
             }
+
+            .brand-avatar-wrap {
+                width: 38px;
+                height: 38px;
+                flex-shrink: 0;
+            }
+
+            .brand-text h1 {
+                font-size: 0.92rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 200px;
+            }
+
+            .brand-sub {
+                font-size: 0.7rem;
+            }
+
+            .nav-cta {
+                padding: 6px 12px;
+                font-size: 0.78rem;
+                flex-shrink: 0;
+            }
+
+            /* Hero */
             .hero {
-                padding: 44px 0 28px;
+                padding: 36px 0 24px;
             }
+
+            .hero-pill {
+                font-size: 0.72rem;
+                padding: 5px 12px;
+                margin-bottom: 14px;
+            }
+
+            .hero h2 {
+                font-size: clamp(1.45rem, 5vw, 2.1rem);
+                line-height: 1.25;
+            }
+
+            .hero p {
+                font-size: 0.92rem;
+                margin-bottom: 22px;
+            }
+
+            /* Meta Chips */
+            .meta-bar {
+                gap: 8px;
+                margin-bottom: 24px;
+            }
+
+            .meta-chip {
+                font-size: 0.78rem;
+                padding: 6px 10px;
+                max-width: 100%;
+                word-break: break-all;
+            }
+
+            /* Search Box - Font >= 16px avoids iOS zoom bug */
+            #searchInput {
+                font-size: 16px !important;
+                padding: 13px 40px 13px 44px;
+                min-height: 44px;
+            }
+
+            /* Quick Tags - Touch-friendly horizontal scroll */
+            .quick-tags {
+                display: flex !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+                justify-content: flex-start;
+                padding: 4px 2px 8px;
+                gap: 8px;
+                scrollbar-width: none;
+            }
+
+            .quick-tags::-webkit-scrollbar {
+                display: none;
+            }
+
+            .quick-tag {
+                flex: 0 0 auto;
+                min-height: 36px;
+                padding: 6px 14px;
+                font-size: 0.8rem;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                white-space: nowrap;
+            }
+
+            /* Main Tabs Navigation */
+            .tabs-container {
+                display: flex !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+                justify-content: flex-start;
+                gap: 8px;
+                padding-bottom: 6px;
+                margin-bottom: 24px;
+                scrollbar-width: none;
+            }
+
+            .tabs-container::-webkit-scrollbar {
+                display: none;
+            }
+
             .tab-trigger {
+                flex: 0 0 auto;
+                min-height: 42px;
+                padding: 10px 16px;
+                font-size: 0.88rem;
+                white-space: nowrap;
+            }
+
+            /* Grids - Single column on mobile to eliminate overflow */
+            .grid-3, .grid-2 {
+                grid-template-columns: 1fr !important;
+                gap: 16px;
+                margin-bottom: 28px;
+            }
+
+            .glass-card {
+                padding: 18px 16px;
+            }
+
+            .card-title {
+                font-size: 1rem;
+            }
+
+            .card-body {
+                font-size: 0.88rem;
+            }
+
+            /* Daemon Banner */
+            .daemon-banner {
+                padding: 20px 16px !important;
+                border-radius: var(--radius-md);
+                margin-bottom: 28px;
+            }
+
+            .daemon-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            /* Deletion Box - Clear 3-step vertical stack */
+            .deletion-box {
+                padding: 20px 16px !important;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 16px;
+            }
+
+            .deletion-steps {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 10px !important;
+            }
+
+            .step-pill {
+                width: 100% !important;
+                display: block !important;
+                line-height: 1.45;
+                padding: 10px 12px;
+                font-size: 0.82rem;
+                white-space: normal !important;
+            }
+
+            .deletion-box .btn-gold {
                 width: 100%;
                 justify-content: center;
+            }
+
+            /* Footer */
+            .footer-grid {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 20px;
+            }
+
+            .footer-links {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .footer-links .btn-outline,
+            .footer-links .btn-gold {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                text-align: center;
+                gap: 8px;
+            }
+
+            /* Back to Top */
+            #backToTop {
+                bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+                right: 18px;
+                width: 42px;
+                height: 42px;
+            }
+        }
+
+        /* ==========================================
+           ULTRA-SMALL MOBILE PE (<= 480px)
+           ========================================== */
+        @media (max-width: 480px) {
+            .container {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+            }
+
+            .nav-inner {
+                height: 58px;
+            }
+
+            .brand-avatar-wrap {
+                width: 34px;
+                height: 34px;
+            }
+
+            .brand-text h1 {
+                font-size: 0.85rem;
+                max-width: 155px;
+            }
+
+            .nav-cta {
+                padding: 5px 10px;
+                font-size: 0.74rem;
+            }
+
+            .hero h2 {
+                font-size: 1.35rem;
+            }
+
+            .meta-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .meta-chip {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .faq-question {
+                padding: 16px;
+                font-size: 0.94rem;
+            }
+
+            .faq-answer {
+                padding: 0 16px;
+                font-size: 0.88rem;
+            }
+
+            .faq-item.open .faq-answer {
+                padding: 0 16px 16px;
             }
         }
     </style>
@@ -1785,12 +2085,16 @@
         }, { passive: true });
 
         // ==========================================
-        // 4. AMBIENT SPIRIT QI PARTICLE CANVAS
+        // 4. AMBIENT SPIRIT QI PARTICLE CANVAS (PC & PE OPTIMIZED)
         // ==========================================
         (function initSpiritQiCanvas() {
             const canvas = document.getElementById('qi-canvas');
+            if (!canvas) return;
             const ctx = canvas.getContext('2d');
-            let width, height, particles;
+            let width = 0;
+            let height = 0;
+            let particles = [];
+            let animationFrameId = null;
 
             const colors = [
                 'rgba(251, 191, 36, 0.45)',  // Gold Spirit Qi
@@ -1799,19 +2103,31 @@
                 'rgba(16, 185, 129, 0.3)'    // Jade Aura
             ];
 
+            const isMobile = () => window.innerWidth <= 768;
+
             function resize() {
-                width = canvas.width = window.innerWidth;
-                height = canvas.height = window.innerHeight;
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                width = window.innerWidth;
+                height = window.innerHeight;
+
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                canvas.style.width = width + 'px';
+                canvas.style.height = height + 'px';
+
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                createParticles();
             }
 
             function createParticles() {
-                const count = Math.min(48, Math.floor((width * height) / 28000));
+                // Tự động tối ưu số lượng hạt: 18 hạt trên mobile (tiết kiệm pin & mượt), 45 hạt trên PC
+                const count = isMobile() ? 18 : 45;
                 particles = [];
                 for (let i = 0; i < count; i++) {
                     particles.push({
                         x: Math.random() * width,
                         y: Math.random() * height,
-                        radius: Math.random() * 2.1 + 0.6,
+                        radius: Math.random() * (isMobile() ? 2.0 : 2.5) + 0.6,
                         vx: (Math.random() - 0.5) * 0.28,
                         vy: -Math.random() * 0.38 - 0.1,
                         color: colors[Math.floor(Math.random() * colors.length)],
@@ -1838,34 +2154,48 @@
                     if (p.x < -10) p.x = width + 10;
                     if (p.x > width + 10) p.x = -10;
 
-                    const glowRadius = p.radius * (2.5 + Math.sin(p.phase) * 0.8);
-                    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius * 2.4);
+                    const glowRadius = p.radius * (2.4 + Math.sin(p.phase) * 0.7);
+                    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius * 2.2);
                     gradient.addColorStop(0, p.color);
                     gradient.addColorStop(1, 'rgba(7, 10, 19, 0)');
 
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, glowRadius * 2.4, 0, Math.PI * 2);
+                    ctx.arc(p.x, p.y, glowRadius * 2.2, 0, Math.PI * 2);
                     ctx.fillStyle = gradient;
                     ctx.fill();
 
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
                     ctx.fillStyle = '#ffffff';
-                    ctx.globalAlpha = 0.4 + Math.sin(p.phase) * 0.25;
+                    ctx.globalAlpha = 0.35 + Math.sin(p.phase) * 0.2;
                     ctx.fill();
                     ctx.globalAlpha = 1;
                 }
 
-                requestAnimationFrame(animate);
+                animationFrameId = requestAnimationFrame(animate);
             }
 
-            window.addEventListener('resize', () => {
-                resize();
-                createParticles();
+            // Tạm dừng render khi ẩn tab để tiết kiệm pin trên điện thoại
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                } else {
+                    animate();
+                }
             });
 
+            // Debounce resize
+            let resizeTimer;
+            let lastWidth = window.innerWidth;
+            window.addEventListener('resize', () => {
+                if (window.innerWidth !== lastWidth) {
+                    lastWidth = window.innerWidth;
+                    clearTimeout(resizeTimer);
+                    resizeTimer = setTimeout(resize, 180);
+                }
+            }, { passive: true });
+
             resize();
-            createParticles();
             animate();
         })();
     </script>
