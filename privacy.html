@@ -2170,12 +2170,17 @@
             function createAmbientParticle(spawnAtBottom = false) {
                 const mobile = isMobile();
                 const colorObj = spiritColors[Math.floor(Math.random() * spiritColors.length)];
+                const bvx = (Math.random() - 0.5) * 0.35;
+                const bvy = -(Math.random() * 0.55 + 0.25);
                 return {
                     x: Math.random() * width,
                     y: spawnAtBottom ? (height + 10 + Math.random() * 20) : (Math.random() * height),
-                    vx: (Math.random() - 0.5) * 0.35,
-                    vy: -(Math.random() * 0.55 + 0.25),
+                    baseVx: bvx,
+                    baseVy: bvy,
+                    vx: bvx,
+                    vy: bvy,
                     radius: Math.random() * (mobile ? 1.8 : 2.2) + 0.9,
+                    scale: spawnAtBottom ? 0.2 : 1.0,
                     color: colorObj.core,
                     glow: colorObj.glow,
                     phase: Math.random() * Math.PI * 2,
@@ -2208,8 +2213,8 @@
                 ambientParticles = [];
                 vortexParticles = [];
 
-                // 1. Hạt môi trường bay bốc lên khắp toàn màn hình (PE: 24 hạt, PC: 70 hạt)
-                const ambientCount = mobile ? 24 : 70;
+                // 1. Hạt môi trường bay bốc lên khắp toàn màn hình (PE: 24 hạt, PC: 100 hạt dồi dào)
+                const ambientCount = mobile ? 24 : 100;
                 for (let i = 0; i < ambientCount; i++) {
                     ambientParticles.push(createAmbientParticle(false));
                 }
@@ -2231,11 +2236,62 @@
                 const mobile = isMobile();
 
                 // -------------------------------------------------------------
-                // 1. VẼ CÁC HẠT MÔI TRƯỜNG THIÊN ĐỊA (BAY BỔNG TỰ NHIÊN)
+                // 1. VẼ CÁC HẠT MÔI TRƯỜNG THIÊN ĐỊA (BỊ XOÁY 3 TIA HÚT VÀO KHI LẠI GẦN)
                 // -------------------------------------------------------------
+                const attractRadius = 280; // Bán kính hút các hạt linh khí xung quanh vào xoáy
                 for (let i = 0; i < ambientParticles.length; i++) {
                     const p = ambientParticles[i];
                     p.phase += p.pulseSpeed;
+
+                    // Hạt mới sinh từ chân màn hình từ từ nở to
+                    if (p.scale < 1.0 && (!mouse.active || Math.hypot(vortexPos.x - p.x, vortexPos.y - p.y) > 40)) {
+                        p.scale = Math.min(1.0, p.scale + 0.02);
+                    }
+
+                    // TƯƠNG TÁC: XOÁY 3 TIA HÚT TRÀN LINH KHÍ XUNG QUANH VÀO ĐAN ĐIỀN CHUỘT (CHỈ TRÊN PC)
+                    if (!mobile && mouse.active && vortexAlpha > 0.05) {
+                        const dx = vortexPos.x - p.x;
+                        const dy = vortexPos.y - p.y;
+                        const dist = Math.hypot(dx, dy);
+
+                        if (dist < attractRadius) {
+                            // Hạt môi trường bị từ trường xoáy 3 tia cuốn lấy, bẻ cong quỹ đạo
+                            const force = Math.max(0, 1 - (dist / attractRadius));
+                            const pull = 0.9 + Math.pow(force, 1.8) * 3.8;
+                            const spin = 1.2 + force * 2.8;
+
+                            const nx = dx / (dist || 1);
+                            const ny = dy / (dist || 1);
+
+                            // Lực hướng tâm kéo về xoáy + Lực xoay tiếp tuyến theo chiều xoáy nước
+                            p.vx += nx * pull + (-ny) * spin;
+                            p.vy += ny * pull + nx * spin;
+
+                            p.vx *= 0.86;
+                            p.vy *= 0.86;
+
+                            // KHI HẠT MÔI TRƯỜNG VÀO SÁT TÂM XOÁY (< 28px): BỊ HẤP THU HOÀN TOÀN
+                            if (dist < 28) {
+                                p.scale -= 0.024; // Thu nhỏ mờ dần từ từ trong tâm xoáy
+                                if (p.scale <= 0.05 || dist < 10) {
+                                    // Dung hợp vào đan điền con trỏ chuột -> Tái sinh hạt mới ở chân màn hình
+                                    ambientParticles[i] = createAmbientParticle(true);
+                                    continue;
+                                }
+                            }
+                        } else {
+                            // Ngoài tầm hút: Phục hồi vận tốc bay bốc lên tự nhiên
+                            p.vx += (p.baseVx - p.vx) * 0.04;
+                            p.vy += (p.baseVy - p.vy) * 0.04;
+                            if (p.scale < 1.0) p.scale = Math.min(1.0, p.scale + 0.02);
+                        }
+                    } else {
+                        // Trên PE hoặc khi không di chuột: bay bổng nhẹ nhàng tự nhiên
+                        p.vx += (p.baseVx - p.vx) * 0.04;
+                        p.vy += (p.baseVy - p.vy) * 0.04;
+                        if (p.scale < 1.0) p.scale = Math.min(1.0, p.scale + 0.02);
+                    }
+
                     p.x += p.vx;
                     p.y += p.vy;
 
@@ -2246,7 +2302,12 @@
                     if (p.x < -15) p.x = width + 15;
                     if (p.x > width + 15) p.x = -15;
 
-                    const glowRadius = p.radius * (2.2 + Math.sin(p.phase) * 0.6);
+                    const curRadius = Math.max(0.3, p.radius * p.scale);
+                    const glowRadius = curRadius * (2.2 + Math.sin(p.phase) * 0.6);
+
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(0, Math.min(1, p.scale));
+
                     const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius * 2.2);
                     gradient.addColorStop(0, p.glow);
                     gradient.addColorStop(1, 'rgba(7, 10, 19, 0)');
@@ -2257,9 +2318,11 @@
                     ctx.fill();
 
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.arc(p.x, p.y, curRadius, 0, Math.PI * 2);
                     ctx.fillStyle = p.color;
                     ctx.fill();
+
+                    ctx.restore();
                 }
 
                 // -------------------------------------------------------------
