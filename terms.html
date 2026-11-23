@@ -2085,7 +2085,7 @@
         }, { passive: true });
 
         // ==========================================
-        // 4. AMBIENT SPIRIT QI & 3-ARM VORTEX CANVAS (PC 3-ARM SPIRIT VORTEX & PE GENTLE FLOAT)
+        // 4. SPIRIT QI CANVAS (TRUE SPIRAL ABSORPTION ON PC & GENTLE FLOAT ON PE)
         // ==========================================
         (function initSpiritQiCanvas() {
             const canvas = document.getElementById('qi-canvas');
@@ -2098,15 +2098,12 @@
             // Nhận diện di động PE: Màn hình hẹp hoặc thiết bị cảm ứng ngón tay (touch coarse)
             const isMobile = () => window.innerWidth <= 768 || window.matchMedia('(pointer: coarse)').matches;
 
-            // Tọa độ con trỏ chuột và tâm xoáy nước mượt mà (CHỈ TRÊN PC)
+            // Tọa độ con trỏ chuột hấp thu linh khí (CHỈ DÀNH CHO PC)
             const mouse = {
                 x: -1000,
                 y: -1000,
                 active: false
             };
-            let vortexPos = { x: -1000, y: -1000 };
-            let vortexAlpha = 0; // Độ mờ của xoáy khi chuột xuất hiện/rời đi
-            let centerAngle = 0; // Góc quay xoáy nước liên tục
 
             // 4 Sắc màu linh khí thiên địa cao cấp
             const spiritColors = [
@@ -2128,8 +2125,7 @@
                 }
             ];
 
-            let ambientParticles = [];
-            let vortexParticles = [];
+            let particles = [];
 
             // Lắng nghe di chuột CHỈ TRÊN PC (trên PE hoàn toàn không kích hoạt)
             if (!isMobile()) {
@@ -2140,10 +2136,6 @@
                     }
                     mouse.x = e.clientX;
                     mouse.y = e.clientY;
-                    if (!mouse.active) {
-                        vortexPos.x = mouse.x;
-                        vortexPos.y = mouse.y;
-                    }
                     mouse.active = true;
                 }, { passive: true });
 
@@ -2163,24 +2155,20 @@
                 canvas.style.height = height + 'px';
 
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                initAllParticles();
+                initParticles();
             }
 
-            // Hạt môi trường bay bốc lên tự nhiên khắp toàn màn hình
-            function createAmbientParticle(spawnAtBottom = false) {
+            // Tạo một hạt linh khí thiên địa thực thụ
+            function createParticle(spawnAtBottom = false) {
                 const mobile = isMobile();
                 const colorObj = spiritColors[Math.floor(Math.random() * spiritColors.length)];
-                const bvx = (Math.random() - 0.5) * 0.35;
-                const bvy = -(Math.random() * 0.55 + 0.25);
                 return {
                     x: Math.random() * width,
-                    y: spawnAtBottom ? (height + 10 + Math.random() * 20) : (Math.random() * height),
-                    baseVx: bvx,
-                    baseVy: bvy,
-                    vx: bvx,
-                    vy: bvy,
+                    // Nếu tái sinh từ đáy: bốc lên từ chân màn hình, nếu ban đầu: rải đều toàn màn hình
+                    y: spawnAtBottom ? (height + 15 + Math.random() * 30) : (Math.random() * height),
+                    vx: (Math.random() - 0.5) * 0.35,
+                    vy: -(Math.random() * 0.55 + 0.3), // Bay thẳng lên trên tự nhiên
                     radius: Math.random() * (mobile ? 1.8 : 2.2) + 0.9,
-                    scale: spawnAtBottom ? 0.2 : 1.0,
                     color: colorObj.core,
                     glow: colorObj.glow,
                     phase: Math.random() * Math.PI * 2,
@@ -2188,126 +2176,74 @@
                 };
             }
 
-            // Hạt thuộc 3 nhánh xoáy nước cuộn vào tâm chuột (3-Arm Vortex Spiral)
-            function createVortexParticle(armIndex, initial = false) {
-                const colorObj = spiritColors[Math.floor(Math.random() * spiritColors.length)];
-                return {
-                    arm: armIndex, // 0, 1, 2 (3 nhánh cách nhau 120 độ)
-                    // Bán kính r: rải từ trong ra ngoài (15 đến 230px), nếu tái sinh thì ở ngoài rìa
-                    r: initial ? (Math.random() * 215 + 15) : (210 + Math.random() * 35),
-                    speed: Math.random() * 1.1 + 1.2, // Tốc độ trôi vào tâm nhẹ nhàng vừa phải
-                    radius: Math.random() * 1.8 + 1.2,
-                    scale: initial ? 1.0 : 0.2, // Nở dần khi sinh ra ở ngoài rìa
-                    offsetAngle: (Math.random() - 0.5) * 0.24, // Độ dày tự nhiên của nhánh xoáy
-                    offsetRadius: (Math.random() - 0.5) * 14,
-                    color: colorObj.core,
-                    glow: colorObj.glow,
-                    phase: Math.random() * Math.PI * 2,
-                    pulseSpeed: Math.random() * 0.03 + 0.01,
-                    fading: false
-                };
-            }
-
-            function initAllParticles() {
+            function initParticles() {
+                particles = [];
                 const mobile = isMobile();
-                ambientParticles = [];
-                vortexParticles = [];
-
-                // 1. Hạt môi trường bay bốc lên khắp toàn màn hình (PE: 24 hạt, PC: 100 hạt dồi dào)
-                const ambientCount = mobile ? 24 : 100;
-                for (let i = 0; i < ambientCount; i++) {
-                    ambientParticles.push(createAmbientParticle(false));
-                }
-
-                // 2. Hạt của XOÁY NƯỚC 3 TIA CUỘN VÀO CHUỘT (CHỈ TRÊN PC: 3 nhánh x 42 hạt = 126 hạt dày đặc)
-                if (!mobile) {
-                    const armsCount = 3;
-                    const particlesPerArm = 42;
-                    for (let a = 0; a < armsCount; a++) {
-                        for (let p = 0; p < particlesPerArm; p++) {
-                            vortexParticles.push(createVortexParticle(a, true));
-                        }
-                    }
+                // Trên PC: 220 hạt linh khí dày đặc phủ kín màn hình. Trên PE: 24 hạt nhẹ nhàng
+                const count = mobile ? 24 : 220;
+                for (let i = 0; i < count; i++) {
+                    particles.push(createParticle(false));
                 }
             }
 
             function animate() {
                 ctx.clearRect(0, 0, width, height);
                 const mobile = isMobile();
+                const absorbRadius = 260; // Bán kính hút linh khí xung quanh con trỏ chuột
 
-                // -------------------------------------------------------------
-                // 1. VẼ CÁC HẠT MÔI TRƯỜNG THIÊN ĐỊA (BỊ XOÁY 3 TIA HÚT VÀO KHI LẠI GẦN)
-                // -------------------------------------------------------------
-                const attractRadius = 280; // Bán kính hút các hạt linh khí xung quanh vào xoáy
-                for (let i = 0; i < ambientParticles.length; i++) {
-                    const p = ambientParticles[i];
+                for (let i = 0; i < particles.length; i++) {
+                    const p = particles[i];
                     p.phase += p.pulseSpeed;
 
-                    // Hạt mới sinh từ chân màn hình từ từ nở to
-                    if (p.scale < 1.0 && (!mouse.active || Math.hypot(vortexPos.x - p.x, vortexPos.y - p.y) > 40)) {
-                        p.scale = Math.min(1.0, p.scale + 0.02);
-                    }
+                    // HÚT XOẮN ỐC THẬT SỰ (CHỈ TRÊN PC KHI RÊ CHUỘT LẠI GẦN)
+                    if (!mobile && mouse.active) {
+                        const dx = p.x - mouse.x;
+                        const dy = p.y - mouse.y;
+                        const currentDist = Math.hypot(dx, dy);
 
-                    // TƯƠNG TÁC: XOÁY 3 TIA HÚT TRÀN LINH KHÍ XUNG QUANH VÀO ĐAN ĐIỀN CHUỘT (CHỈ TRÊN PC)
-                    if (!mobile && mouse.active && vortexAlpha > 0.05) {
-                        const dx = vortexPos.x - p.x;
-                        const dy = vortexPos.y - p.y;
-                        const dist = Math.hypot(dx, dy);
+                        if (currentDist < absorbRadius) {
+                            // Hạt nằm trong tầm hút: BẮT BUỘC CHẠY THEO HÌNH XOẮN ỐC LAO VÀO TÂM CHUỘT
+                            const currentAngle = Math.atan2(dy, dx);
 
-                        if (dist < attractRadius) {
-                            // Hạt môi trường bị từ trường xoáy 3 tia cuốn lấy, bẻ cong quỹ đạo
-                            const force = Math.max(0, 1 - (dist / attractRadius));
-                            const pull = 0.9 + Math.pow(force, 1.8) * 3.8;
-                            const spin = 1.2 + force * 2.8;
+                            // 1. Bán kính co hẹp liên tục về 0 (tuyệt đối không quay vòng tròn tại chỗ)
+                            const inwardSpeed = 2.4 + (1 - currentDist / absorbRadius) * 4.6;
+                            const newDist = Math.max(0, currentDist - inwardSpeed);
 
-                            const nx = dx / (dist || 1);
-                            const ny = dy / (dist || 1);
+                            // 2. Góc quay theo chiều xoắn ốc (càng vào gần tâm quay càng tít)
+                            const spinSpeed = 0.08 + (1 - currentDist / absorbRadius) * 0.16;
+                            const newAngle = currentAngle + spinSpeed;
 
-                            // Lực hướng tâm kéo về xoáy + Lực xoay tiếp tuyến theo chiều xoáy nước
-                            p.vx += nx * pull + (-ny) * spin;
-                            p.vy += ny * pull + nx * spin;
+                            // 3. Tọa độ hạt lao theo đường xoắn ốc vào con trỏ chuột
+                            p.x = mouse.x + Math.cos(newAngle) * newDist;
+                            p.y = mouse.y + Math.sin(newAngle) * newDist;
 
-                            p.vx *= 0.86;
-                            p.vy *= 0.86;
-
-                            // KHI HẠT MÔI TRƯỜNG VÀO SÁT TÂM XOÁY (< 28px): BỊ HẤP THU HOÀN TOÀN
-                            if (dist < 28) {
-                                p.scale -= 0.024; // Thu nhỏ mờ dần từ từ trong tâm xoáy
-                                if (p.scale <= 0.05 || dist < 10) {
-                                    // Dung hợp vào đan điền con trỏ chuột -> Tái sinh hạt mới ở chân màn hình
-                                    ambientParticles[i] = createAmbientParticle(true);
-                                    continue;
-                                }
+                            // 4. KHI CHẠM SÁT ĐẦU CHUỘT (newDist <= 12px): Bị hấp thu hoàn toàn vào đan điền chuột!
+                            if (newDist <= 12) {
+                                // Tái sinh hạt mới ở chân màn hình để tiếp tục bay lên
+                                particles[i] = createParticle(true);
+                                continue;
                             }
                         } else {
-                            // Ngoài tầm hút: Phục hồi vận tốc bay bốc lên tự nhiên
-                            p.vx += (p.baseVx - p.vx) * 0.04;
-                            p.vy += (p.baseVy - p.vy) * 0.04;
-                            if (p.scale < 1.0) p.scale = Math.min(1.0, p.scale + 0.02);
+                            // Ngoài tầm hút: Bay tự do bốc lên trời
+                            p.x += p.vx;
+                            p.y += p.vy;
                         }
                     } else {
-                        // Trên PE hoặc khi không di chuột: bay bổng nhẹ nhàng tự nhiên
-                        p.vx += (p.baseVx - p.vx) * 0.04;
-                        p.vy += (p.baseVy - p.vy) * 0.04;
-                        if (p.scale < 1.0) p.scale = Math.min(1.0, p.scale + 0.02);
+                        // Trên PE hoặc khi không di chuột: Bay bổng tự nhiên
+                        p.x += p.vx;
+                        p.y += p.vy;
                     }
 
-                    p.x += p.vx;
-                    p.y += p.vy;
-
+                    // Khi hạt bay vượt quá đỉnh màn hình: Tái sinh lại từ chân màn hình
                     if (p.y < -15) {
-                        ambientParticles[i] = createAmbientParticle(true);
+                        particles[i] = createParticle(true);
                         continue;
                     }
                     if (p.x < -15) p.x = width + 15;
                     if (p.x > width + 15) p.x = -15;
 
-                    const curRadius = Math.max(0.3, p.radius * p.scale);
-                    const glowRadius = curRadius * (2.2 + Math.sin(p.phase) * 0.6);
-
-                    ctx.save();
-                    ctx.globalAlpha = Math.max(0, Math.min(1, p.scale));
-
+                    // Vẽ hạt phát quang linh khí (Hoàn toàn tự do, không có bất kỳ que nối nào)
+                    const glowRadius = p.radius * (2.2 + Math.sin(p.phase) * 0.6);
                     const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius * 2.2);
                     gradient.addColorStop(0, p.glow);
                     gradient.addColorStop(1, 'rgba(7, 10, 19, 0)');
@@ -2317,101 +2253,15 @@
                     ctx.fillStyle = gradient;
                     ctx.fill();
 
+                    // Lõi sáng hạt
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, curRadius, 0, Math.PI * 2);
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
                     ctx.fillStyle = p.color;
                     ctx.fill();
-
-                    ctx.restore();
                 }
 
-                // -------------------------------------------------------------
-                // 2. VẼ XOÁY NƯỚC LINH KHÍ 3 TIA CUỘN VÀO CON TRỎ CHUỘT (CHỈ TRÊN PC)
-                // -------------------------------------------------------------
-                if (!mobile) {
-                    if (mouse.active) {
-                        // Di chuyển tâm xoáy bám theo chuột với quán tính uốn lượn mượt mà
-                        vortexPos.x += (mouse.x - vortexPos.x) * 0.22;
-                        vortexPos.y += (mouse.y - vortexPos.y) * 0.22;
-                        vortexAlpha = Math.min(1.0, vortexAlpha + 0.05);
-                    } else {
-                        vortexAlpha = Math.max(0.0, vortexAlpha - 0.04);
-                    }
-
-                    if (vortexAlpha > 0.01) {
-                        // Quay toàn bộ xoáy nước theo thời gian (ngược chiều kim đồng hồ cuộn vào tâm)
-                        centerAngle -= 0.036;
-
-                        // Tâm đan điền con trỏ chuột phát quang tụ hội linh khí dịu nhẹ
-                        const coreGlow = ctx.createRadialGradient(vortexPos.x, vortexPos.y, 0, vortexPos.x, vortexPos.y, 35);
-                        coreGlow.addColorStop(0, `rgba(251, 191, 36, ${0.45 * vortexAlpha})`);
-                        coreGlow.addColorStop(0.5, `rgba(6, 182, 212, ${0.25 * vortexAlpha})`);
-                        coreGlow.addColorStop(1, 'rgba(7, 10, 19, 0)');
-                        ctx.beginPath();
-                        ctx.arc(vortexPos.x, vortexPos.y, 35, 0, Math.PI * 2);
-                        ctx.fillStyle = coreGlow;
-                        ctx.fill();
-
-                        // Cập nhật và vẽ từng hạt trong 3 nhánh xoáy (100% hạt phát sáng, KHÔNG CÓ QUE NỐI)
-                        for (let i = 0; i < vortexParticles.length; i++) {
-                            const vp = vortexParticles[i];
-                            vp.phase += vp.pulseSpeed;
-
-                            // Hạt trôi dần về tâm
-                            vp.r -= vp.speed;
-
-                            // Hạt ở rìa ngoài từ từ nở to
-                            if (vp.scale < 1.0 && !vp.fading) {
-                                vp.scale = Math.min(1.0, vp.scale + 0.04);
-                            }
-
-                            // KHI VÀO SÁT TÂM CHUỘT (< 26px): HẤP THU TỪ TỪ, THU NHỎ VÀ MỜ DẦN
-                            if (vp.r < 26) {
-                                vp.fading = true;
-                                vp.scale -= 0.022; // Mờ dần trong ~45 frame (~0.7s) không biến mất đột ngột
-                                if (vp.scale <= 0.05 || vp.r <= 4) {
-                                    // Dung hợp hoàn tất -> Tái sinh ở đầu ngoài nhánh xoáy
-                                    vortexParticles[i] = createVortexParticle(vp.arm, false);
-                                    continue;
-                                }
-                            }
-
-                            // PHƯƠNG TRÌNH XOẮN ỐC 3 NHÁNH (3-Arm Logarithmic Spiral Vortex)
-                            // 3 nhánh lệch nhau chính xác 120 độ (2*PI / 3)
-                            const armAngle = vp.arm * (Math.PI * 2 / 3);
-                            // Độ uốn lượn hình xoáy nước theo bán kính r
-                            const spiralCurvature = Math.sqrt(Math.max(0, vp.r)) * 0.42;
-                            const currentAngle = centerAngle + armAngle + spiralCurvature + vp.offsetAngle;
-
-                            const actualR = Math.max(3, vp.r + vp.offsetRadius);
-                            const px = vortexPos.x + Math.cos(currentAngle) * actualR;
-                            const py = vortexPos.y + Math.sin(currentAngle) * actualR;
-
-                            // Vẽ hạt phát quang linh khí dọc theo nhánh xoáy
-                            const curRadius = Math.max(0.4, vp.radius * vp.scale);
-                            const glowRadius = curRadius * (2.2 + Math.sin(vp.phase) * 0.5);
-
-                            ctx.save();
-                            ctx.globalAlpha = Math.max(0, Math.min(1, vp.scale * vortexAlpha));
-
-                            const gradient = ctx.createRadialGradient(px, py, 0, px, py, glowRadius * 2.2);
-                            gradient.addColorStop(0, vp.glow);
-                            gradient.addColorStop(1, 'rgba(7, 10, 19, 0)');
-
-                            ctx.beginPath();
-                            ctx.arc(px, py, glowRadius * 2.2, 0, Math.PI * 2);
-                            ctx.fillStyle = gradient;
-                            ctx.fill();
-
-                            ctx.beginPath();
-                            ctx.arc(px, py, curRadius, 0, Math.PI * 2);
-                            ctx.fillStyle = vp.color;
-                            ctx.fill();
-
-                            ctx.restore();
-                        }
-                    }
-                }
+                animationFrameId = requestAnimationFrame(animate);
+            }
 
                 animationFrameId = requestAnimationFrame(animate);
             }
