@@ -2159,6 +2159,7 @@
                     vx: (Math.random() - 0.5) * 0.35,
                     vy: -(Math.random() * 0.55 + 0.3), // Bay thẳng lên trên tự nhiên
                     radius: Math.random() * 2.2 + 1.0,
+                    scale: spawnAtBottom ? 0.2 : 1.0, // Nở dần khi tái sinh từ đáy
                     color: colorObj.core,
                     glow: colorObj.glow,
                     phase: Math.random() * Math.PI * 2,
@@ -2183,43 +2184,53 @@
                     const p = particles[i];
                     p.phase += p.pulseSpeed;
 
-                    // HÚT XOẮN ỐC THẬT SỰ KHI RÊ CHUỘT LẠI GẦN
+                    // Hạt mới sinh từ đáy từ từ nở to đạt kích thước chuẩn
+                    if (p.scale < 1.0 && (!mouse.active || Math.hypot(p.x - mouse.x, p.y - mouse.y) > 30)) {
+                        p.scale = Math.min(1.0, p.scale + 0.02);
+                    }
+
+                    // HÚT XOẮN ỐC THẬT SỰ KHI RÊ CHUỘT LẠI GẦN (XOAY CHẬM RÃI, TỪ TỪ)
                     if (mouse.active) {
                         const dx = p.x - mouse.x;
                         const dy = p.y - mouse.y;
                         const currentDist = Math.hypot(dx, dy);
 
                         if (currentDist < absorbRadius) {
-                            // Hạt nằm trong tầm hút: BẮT BUỘC CHẠY THEO HÌNH XOẮN ỐC LAO VÀO TÂM CHUỘT
+                            // Hạt nằm trong tầm hút: Chạy theo đường xoắn ốc êm dịu, xoay từ từ vào tâm
                             const currentAngle = Math.atan2(dy, dx);
 
-                            // 1. Bán kính co hẹp liên tục về 0 (tuyệt đối không quay vòng tròn tại chỗ)
-                            const inwardSpeed = 2.4 + (1 - currentDist / absorbRadius) * 4.6;
+                            // 1. Tốc độ hút vào tâm chậm rãi, êm dịu
+                            const inwardSpeed = 0.85 + (1 - currentDist / absorbRadius) * 1.65;
                             const newDist = Math.max(0, currentDist - inwardSpeed);
 
-                            // 2. Góc quay theo chiều xoắn ốc (càng vào gần tâm quay càng tít)
-                            const spinSpeed = 0.08 + (1 - currentDist / absorbRadius) * 0.16;
+                            // 2. Góc xoay chậm rãi thư thái, cuộn tròn mềm mại vào con trỏ chuột
+                            const spinSpeed = 0.024 + (1 - currentDist / absorbRadius) * 0.038;
                             const newAngle = currentAngle + spinSpeed;
 
-                            // 3. Tọa độ hạt lao theo đường xoắn ốc vào con trỏ chuột
+                            // 3. Tọa độ hạt lao theo đường xoắn ốc êm dịu vào con trỏ chuột
                             p.x = mouse.x + Math.cos(newAngle) * newDist;
                             p.y = mouse.y + Math.sin(newAngle) * newDist;
 
-                            // 4. KHI CHẠM SÁT ĐẦU CHUỘT (newDist <= 12px): Bị hấp thu hoàn toàn vào đan điền chuột!
-                            if (newDist <= 12) {
-                                // Tái sinh hạt mới ở chân màn hình để tiếp tục bay lên
-                                particles[i] = createParticle(true);
-                                continue;
+                            // 4. KHI VÀO SÁT ĐẦU CHUỘT (newDist <= 18px): Thu nhỏ và mờ dần từ từ rồi mới hấp thu
+                            if (newDist <= 18) {
+                                p.scale -= 0.022; // Mờ dần trong ~45 frame (~0.7s) không biến mất đột ngột
+                                if (p.scale <= 0.05 || newDist <= 4) {
+                                    // Bị hấp thu hoàn toàn -> Tái sinh hạt mới ở chân màn hình
+                                    particles[i] = createParticle(true);
+                                    continue;
+                                }
                             }
                         } else {
                             // Ngoài tầm hút: Bay tự do bốc lên trời
                             p.x += p.vx;
                             p.y += p.vy;
+                            if (p.scale < 1.0) p.scale = Math.min(1.0, p.scale + 0.02);
                         }
                     } else {
                         // Khi không di chuột: Bay bổng tự nhiên
                         p.x += p.vx;
                         p.y += p.vy;
+                        if (p.scale < 1.0) p.scale = Math.min(1.0, p.scale + 0.02);
                     }
 
                     // Khi hạt bay vượt quá đỉnh màn hình: Tái sinh lại từ chân màn hình
@@ -2230,8 +2241,13 @@
                     if (p.x < -15) p.x = width + 15;
                     if (p.x > width + 15) p.x = -15;
 
-                    // Vẽ hạt phát quang linh khí (Hoàn toàn tự do, không có bất kỳ que nối nào)
-                    const glowRadius = p.radius * (2.2 + Math.sin(p.phase) * 0.6);
+                    // Vẽ hạt phát quang linh khí với độ mờ và kích thước êm dịu
+                    const curRadius = Math.max(0.3, p.radius * p.scale);
+                    const glowRadius = curRadius * (2.2 + Math.sin(p.phase) * 0.6);
+
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(0, Math.min(1, p.scale));
+
                     const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius * 2.2);
                     gradient.addColorStop(0, p.glow);
                     gradient.addColorStop(1, 'rgba(7, 10, 19, 0)');
@@ -2243,9 +2259,11 @@
 
                     // Lõi sáng hạt
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.arc(p.x, p.y, curRadius, 0, Math.PI * 2);
                     ctx.fillStyle = p.color;
                     ctx.fill();
+
+                    ctx.restore();
                 }
 
                 animationFrameId = requestAnimationFrame(animate);
