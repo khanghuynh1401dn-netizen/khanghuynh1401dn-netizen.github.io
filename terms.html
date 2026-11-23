@@ -2163,13 +2163,14 @@
                 const colorObj = spiritColors[Math.floor(Math.random() * spiritColors.length)];
                 return {
                     x: Math.random() * width,
-                    // Nếu tái sinh hoặc ban đầu: rải đều khắp màn hình hoặc bốc lên từ đáy
+                    // Nếu tái sinh từ đáy hoặc ban đầu: rải đều khắp màn hình hoặc bốc lên từ đáy
                     y: spawnAtBottom ? (height + 10 + Math.random() * 20) : (Math.random() * height),
                     baseVx: (Math.random() - 0.5) * 0.35,
-                    baseVy: -(Math.random() * 0.6 + 0.25), // Bay thẳng lên trên tự nhiên
+                    baseVy: -(Math.random() * 0.55 + 0.25), // Bay thẳng lên trên tự nhiên
                     vx: 0,
                     vy: 0,
-                    radius: Math.random() * (mobile ? 1.8 : 2.2) + 0.8,
+                    radius: Math.random() * (mobile ? 1.8 : 2.2) + 0.9,
+                    scale: spawnAtBottom ? 0.2 : 1.0, // Nở dần khi tái sinh từ đáy màn hình
                     color: colorObj.core,
                     glow: colorObj.glow,
                     phase: Math.random() * Math.PI * 2,
@@ -2200,42 +2201,58 @@
                     const p = particles[i];
                     p.phase += p.pulseSpeed;
 
+                    // Hạt mới tái sinh từ chân màn hình từ từ nở to đạt kích thước chuẩn
+                    if (p.scale < 1.0 && (!mouse.active || Math.hypot(mouse.x - p.x, mouse.y - p.y) > 35)) {
+                        p.scale = Math.min(1.0, p.scale + 0.02);
+                    }
+
                     // HIỆU ỨNG HẤP THU LINH KHÍ KHI DI CHUỘT (CHỈ TRÊN PC)
                     if (!mobile && mouse.active) {
                         const dx = mouse.x - p.x;
                         const dy = mouse.y - p.y;
                         const dist = Math.hypot(dx, dy);
 
-                        // Khi hạt đến sát đầu chuột (< 16px): Bị hấp thu hoàn toàn vào đan điền con trỏ!
-                        if (dist < 16) {
-                            // Tái sinh hạt mới ở đáy màn hình tiếp tục bay lên
-                            particles[i] = createSingleParticle(true);
-                            particles[i].vx = particles[i].baseVx;
-                            particles[i].vy = particles[i].baseVy;
-                            continue;
-                        }
-
                         if (dist < absorbRadius) {
-                            // Hạt nằm trong tầm hút: Bị xoáy cuộn hướng tâm lao thẳng vào đầu chuột
+                            // Hạt nằm trong tầm hút: Chuyển động xoắn ốc (spiral) mềm mại quanh đầu chuột
                             const force = Math.max(0, 1 - (dist / absorbRadius));
-                            const pull = (2.2 + Math.pow(force, 2) * 5.0);
-                            const spin = (1.2 + force * 1.2) * (dist / absorbRadius);
+                            
+                            // Lực hút hướng tâm êm ái kết hợp lực xoáy tiếp tuyến để hạt lượn vòng
+                            const pull = 0.5 + Math.pow(force, 1.5) * 2.2;
+                            const spin = 1.2 + force * 2.2;
 
-                            p.vx += (dx / dist) * pull + (-dy / dist) * spin;
-                            p.vy += (dy / dist) * pull + (dx / dist) * spin;
+                            const nx = dx / (dist || 1);
+                            const ny = dy / (dist || 1);
 
-                            // Hãm quán tính để xoáy cuộn mượt mà
-                            p.vx *= 0.82;
-                            p.vy *= 0.82;
+                            p.vx += nx * pull + (-ny) * spin;
+                            p.vy += ny * pull + nx * spin;
+
+                            // Hãm quán tính mượt mà tạo luồng xoáy tự nhiên
+                            p.vx *= 0.88;
+                            p.vy *= 0.88;
+
+                            // KHI HẠT ĐẾN SÁT TÂM CHUỘT (< 28px): HẤP THU TỪ TỪ, KHÔNG BIẾN MẤT ĐỘT NGỘT
+                            if (dist < 28) {
+                                // Hạt xoay tít quanh chuột và thu nhỏ/mờ dần từ từ trong gần 1 giây
+                                p.scale -= 0.016;
+                                if (p.scale <= 0.05) {
+                                    // Đã dung hợp hoàn toàn vào đan điền con trỏ -> Tái sinh hạt mới ở đáy màn hình
+                                    particles[i] = createSingleParticle(true);
+                                    particles[i].vx = particles[i].baseVx;
+                                    particles[i].vy = particles[i].baseVy;
+                                    continue;
+                                }
+                            }
                         } else {
                             // Khi nằm ngoài tầm hút: từ từ trở lại vận tốc bay bổng tự nhiên hướng lên
-                            p.vx += (p.baseVx - p.vx) * 0.05;
-                            p.vy += (p.baseVy - p.vy) * 0.05;
+                            p.vx += (p.baseVx - p.vx) * 0.04;
+                            p.vy += (p.baseVy - p.vy) * 0.04;
+                            if (p.scale < 1.0) p.scale = Math.min(1.0, p.scale + 0.02);
                         }
                     } else {
                         // Trên PE hoặc khi không di chuột: bay bổng nhẹ nhàng tự nhiên
-                        p.vx += (p.baseVx - p.vx) * 0.05;
-                        p.vy += (p.baseVy - p.vy) * 0.05;
+                        p.vx += (p.baseVx - p.vx) * 0.04;
+                        p.vy += (p.baseVy - p.vy) * 0.04;
+                        if (p.scale < 1.0) p.scale = Math.min(1.0, p.scale + 0.02);
                     }
 
                     p.x += p.vx;
@@ -2249,8 +2266,13 @@
                     if (p.x < -15) p.x = width + 15;
                     if (p.x > width + 15) p.x = -15;
 
-                    // Vẽ hạt phát quang linh khí
-                    const glowRadius = p.radius * (2.2 + Math.sin(p.phase) * 0.6);
+                    // Vẽ hạt phát quang linh khí với kích thước và độ mờ theo scale
+                    const curRadius = Math.max(0.3, p.radius * p.scale);
+                    const glowRadius = curRadius * (2.2 + Math.sin(p.phase) * 0.6);
+
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(0, Math.min(1, p.scale));
+
                     const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowRadius * 2.2);
                     gradient.addColorStop(0, p.glow);
                     gradient.addColorStop(1, 'rgba(7, 10, 19, 0)');
@@ -2262,9 +2284,11 @@
 
                     // Lõi sáng hạt
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.arc(p.x, p.y, curRadius, 0, Math.PI * 2);
                     ctx.fillStyle = p.color;
                     ctx.fill();
+
+                    ctx.restore();
                 }
 
                 animationFrameId = requestAnimationFrame(animate);
